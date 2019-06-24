@@ -9,6 +9,7 @@
 #include <cassert>
 #include <cfloat>
 #include <numeric>
+#include <memory>
 #include <functional>
 #include <random>
 #include <algorithm>
@@ -21,6 +22,10 @@
 #include <sstream>
 #include <limits>
 #include <unordered_set>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdexcept>
+#include <array>
 
 #define SWAPDOUBLE(a,b) {double copy; copy = a, a = b, b = copy;}
 #define SWAPINT(a,b) {int copy; copy = a, a = b, b = copy;}
@@ -33,6 +38,7 @@ using Eigen::ArrayXXd;
 typedef Eigen::Ref<Eigen::ArrayXd> RefArrayXd;
 typedef Eigen::Ref<Eigen::ArrayXXd> RefArrayXXd;
 typedef Eigen::Ref<Eigen::ArrayXi> RefArrayXi;
+
 // -------------------------------------------------------------------------------------------------
 class Metric
 {
