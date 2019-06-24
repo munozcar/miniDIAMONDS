@@ -6,9 +6,11 @@
 #include <iomanip>
 #include <fstream>
 #include <Eigen/Dense>
+#include <stdio.h>
+#include <stdlib.h>
 #include "miniNS.h"
 
-// -------------- CODE YOUR FORWARD MODEL HERE ----------------------------------------------------
+// -------------- "LINEAR" FORWARD MODEL ----------------------------------------------------------
 class LinearModel : public Model
 {
     public:
@@ -36,7 +38,47 @@ void LinearModel::predict(RefArrayXd predictions, RefArrayXd const modelParamete
     predictions = slope*covariates + offset;
 }
 
-// -------------- MAIN INFERENCE PROGRAM ----------------------------------------------------------
+
+// -------------- "PSG RETRIEVAL" FORWARD MODEL ---------------------------------------------------
+
+std::string exec(const char* cmd) {
+    char buffer[128];
+    std::string result = "";
+    FILE* pipe = popen(cmd, "r");
+    if (!pipe) throw std::runtime_error("popen() failed!");
+    try {
+        while (fgets(buffer, sizeof buffer, pipe) != NULL) {
+            result += buffer;
+        }
+    } catch (...) {
+        pclose(pipe);
+        throw;
+    }
+    pclose(pipe);
+    return result;
+}
+
+class PSGModel : public Model
+{
+    public:
+        PSGModel(const RefArrayXd covariates);
+        ~PSGModel();
+        ArrayXd getCovariates();
+        virtual void predict(RefArrayXd predictions, const RefArrayXd modelParameters);
+
+    protected:
+    private:
+};
+
+void PSGModel::predict(RefArrayXd predictions, RefArrayXd const modelParameters)
+{
+    std::string out = "";
+    double planet_radius = modelParameters(0);
+    double planet_temperature = modelParameters(1);
+    exec("curl -d type=rad -d whdr=n --data-urlencode file@config.txt https://psg.gsfc.nasa.gov/api.php");
+}
+
+// -------------- MAIN PROGRAM --------------------------------------------------------------------
 
 int main(int argc, char *argv[])
 {
@@ -52,7 +94,7 @@ int main(int argc, char *argv[])
     int Ncols;
     ArrayXXd data;
     string baseInputDirName = "";
-    string inputFileName = "input_data.txt";
+    string inputFileName = "input_data.txt"; // data
     string outputPathPrefix = "Inference_";
 
     ifstream inputFile;
