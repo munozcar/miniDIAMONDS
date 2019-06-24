@@ -1,4 +1,4 @@
-// To compile: clang++ -o test_miniNS test_miniNS.cpp -L./build/ -I ./include/ -l./minins -stdlib=libc++ -std=c++11 -Wno-deprecated-register
+// To compile: clang++ -o ATMO_retrieve ATMO_retrieve.cpp -L./build/ -I ./include/ -l./minins -stdlib=libc++ -std=c++11 -Wno-deprecated-register
 
 
 #include <cstdlib>
@@ -10,12 +10,12 @@
 #include <stdlib.h>
 #include "miniNS.h"
 
-// -------------- "Parabolic" FORWARD MODEL ----------------------------------------------------------
-class ParabolicModel : public Model
+// -------------- "ATMO GRID" FORWARD MODEL ----------------------------------------------------------
+class ATMOModel : public Model
 {
     public:
-        ParabolicModel(const RefArrayXd covariates);
-        ~ParabolicModel();
+        ATMOModel(const RefArrayXd covariates);
+        ~ATMOModel();
         ArrayXd getCovariates();
         virtual void predict(RefArrayXd predictions, const RefArrayXd modelParameters);
 
@@ -23,58 +23,37 @@ class ParabolicModel : public Model
     private:
 };
 
-ParabolicModel::ParabolicModel(const RefArrayXd covariates)
+ATMOModel::ATMOModel(const RefArrayXd covariates)
 : Model(covariates)
 {
 }
-ParabolicModel::~ParabolicModel()
+ATMOModel::~ATMOModel()
 {
 }
 
-void ParabolicModel::predict(RefArrayXd predictions, RefArrayXd const modelParameters)
+void ATMOModel::predict(RefArrayXd predictions, RefArrayXd const modelParameters)
 {
-    double a = modelParameters(0);
-    double b = modelParameters(1);
-    double c = modelParameters(2);
-    double d = modelParameters(3);
-    predictions = a*exp(-b*covariates) + c*covariates*log(d*covariates);
-}
+    string model_name = "../ATMO/transfiles_txt/trans-iso-generic__10_+1.7_0.70_1100_1.00_model.txt";
+    int temp_num = round(modelParameters(0)/100)*100;
+    string Temperature = std::to_string(temp_num);
+    int insert_pos = 41;
+    model_name.insert (insert_pos, Temperature);
 
-
-// -------------- "PSG RETRIEVAL" FORWARD MODEL ---------------------------------------------------
-std::string exec(const char* cmd) {
-    char buffer[128];
-    std::string result = "";
-    FILE* pipe = popen(cmd, "r");
-    if (!pipe) throw std::runtime_error("popen() failed!");
-    try {
-        while (fgets(buffer, sizeof buffer, pipe) != NULL) {
-            result += buffer;
-        }
-    } catch (...) {
-        pclose(pipe);
-        throw;
+    if (temp_num < 1000)
+    {
+      model_name.insert (insert_pos, "0");
     }
-    pclose(pipe);
-    return result;
-}
-class PSGModel : public Model
-{
-    public:
-        PSGModel(const RefArrayXd covariates);
-        ~PSGModel();
-        ArrayXd getCovariates();
-        virtual void predict(RefArrayXd predictions, const RefArrayXd modelParameters);
 
-    protected:
-    private:
-};
-void PSGModel::predict(RefArrayXd predictions, RefArrayXd const modelParameters)
-{
-    std::string out = "";
-    double planet_radius = modelParameters(0);
-    double planet_temperature = modelParameters(1);
-    exec("curl -d type=rad -d whdr=n --data-urlencode file@config.txt https://psg.gsfc.nasa.gov/api.php");
+    unsigned long Nrows;
+    int Ncols;
+
+    ifstream modelFile;
+    File::openInputFile(modelFile, model_name);
+    File::sniffFile(modelFile, Nrows, Ncols);
+    ArrayXXd model = File::arrayXXdFromFile(modelFile, Nrows, Ncols);
+    modelFile.close();
+
+    predictions = model.col(1).block(0,0,200,1);
 }
 
 // -------------- MAIN PROGRAM --------------------------------------------------------------------
@@ -93,10 +72,8 @@ int main(int argc, char *argv[])
     int Ncols;
     ArrayXXd data;
     string baseInputDirName = "";
-    string inputFileName = "exponential.txt"; // data
-    string outputPathPrefix = "Exponential_";
-
-    cout << (std::to_string(Nrows)) << endl;
+    string inputFileName = "input_model.txt"; // data
+    string outputPathPrefix = "Transmission_";
 
     ifstream inputFile;
     File::openInputFile(inputFile, inputFileName);
@@ -105,9 +82,9 @@ int main(int argc, char *argv[])
     inputFile.close();
 
     // Create arrays for each data type
-    ArrayXd covariates = data.col(0);
-    ArrayXd observations = data.col(1);
-    ArrayXd uncertainties = data.col(2);
+    ArrayXd covariates = data.col(0).block(0,0,200,1);
+    ArrayXd observations = data.col(1).block(0,0,200,1);
+    ArrayXd uncertainties = data.col(2).block(0,0,200,1);
 
     // Uniform Prior
     unsigned long Nparameters;  // Number of parameters for which prior distributions are defined
@@ -116,8 +93,8 @@ int main(int argc, char *argv[])
     vector<Prior*> ptrPriors(1);
     ArrayXd parametersMinima(Ndimensions);
     ArrayXd parametersMaxima(Ndimensions);
-    parametersMinima <<  5, 0, 0, 0;         // Minima values for the free parameters
-    parametersMaxima << 15, 8, 6, 1;     // Maxima values for the free parameters
+    parametersMinima <<  1000;         // Minima values for the free parameters
+    parametersMaxima << 2000;     // Maxima values for the free parameters
 
     UniformPrior uniformPrior(parametersMinima, parametersMaxima);
     ptrPriors[0] = &uniformPrior;
@@ -126,7 +103,7 @@ int main(int argc, char *argv[])
     uniformPrior.writeHyperParametersToFile(fullPathHyperParameters);
 
     // Set up the models for the inference problem
-    ParabolicModel model(covariates);      // Parabolic function
+    ATMOModel model(covariates);      // ATMO function
 
 
     // Set up the likelihood function to be used
