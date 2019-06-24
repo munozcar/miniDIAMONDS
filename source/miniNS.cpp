@@ -6,6 +6,10 @@
 #include <Eigen/Dense>
 #include "miniNS.h"
 
+
+// -------------- PRINCIPAL INFERENCE PROGRAM -----------------------------------------------------
+
+
 // -------------- PROGRAM TO FIND EUCLIDEAN DISTANCE ----------------------------------------------
 double EuclideanMetric::distance(RefArrayXd point1, RefArrayXd point2)
 {
@@ -2469,3 +2473,4 @@ void Results::writeParametersSummaryToFile(string fileName, const double credibl
     File::arrayXXdToFile(outputFile, parameterEstimates);
     outputFile.close();
 }
+// ------------------------------------------------------------------------------------------------
