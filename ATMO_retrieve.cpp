@@ -1,4 +1,4 @@
-// To compile: clang++ -o ATMO_retrieve ATMO_retrieve.cpp -L./build/ -I ./include/ -l./minins -stdlib=libc++ -std=c++11 -Wno-deprecated-register
+// To compile: clang++ -o ATMO_retrieve ATMO_retrieve.cpp -L./build/ -I ./include/ -l minins -stdlib=libc++ -std=c++11 -Wno-deprecated-register
 
 
 #include <cstdlib>
@@ -33,15 +33,32 @@ ATMOModel::~ATMOModel()
 
 void ATMOModel::predict(RefArrayXd predictions, RefArrayXd const modelParameters)
 {
-    string model_name = "../ATMO/transfiles_txt/trans-iso-generic__10_+1.7_0.70_1100_1.00_model.txt";
-    int temp_num = round(modelParameters(0)/100)*100;
-    string Temperature = std::to_string(temp_num);
-    int insert_pos = 41;
-    model_name.insert (insert_pos, Temperature);
+    string model_name = "../ATMO/transfiles_txt/trans-iso-generic__10_+1.7__1100_1.00_model.txt";
 
+    int temp_num = round(modelParameters(0)/100)*100; // Temperature
+    float co_num = modelParameters(1); // C/O ratio
+    if (co_num < 0.455)
+    {
+      co_num = 0.35;}
+      else if (co_num < 0.63)
+      {
+        co_num = 0.56;}
+        else if (co_num < 0.85)
+        {
+          co_num = 0.70;}
+          else{
+            co_num = 1.00;}
+
+    string CO_Ratio = std::to_string(co_num);
+    string Temperature = std::to_string(temp_num);
+
+    int insert_pos_t = 41;
+    int insert_pos_co = 54;
+    model_name.insert (insert_pos_t, Temperature);
+    model_name.insert (insert_pos_co, CO_Ratio, 0, 4);
     if (temp_num < 1000)
     {
-      model_name.insert (insert_pos, "0");
+      model_name.insert (insert_pos_t, "0");
     }
 
     unsigned long Nrows;
@@ -89,12 +106,12 @@ int main(int argc, char *argv[])
     // Uniform Prior
     unsigned long Nparameters;  // Number of parameters for which prior distributions are defined
 
-    int Ndimensions = 1;        // Number of free parameters (dimensions) of the problem
+    int Ndimensions = 2;        // Number of free parameters (dimensions) of the problem
     vector<Prior*> ptrPriors(1);
     ArrayXd parametersMinima(Ndimensions);
     ArrayXd parametersMaxima(Ndimensions);
-    parametersMinima <<  1000;         // Minima values for the free parameters
-    parametersMaxima << 2000;     // Maxima values for the free parameters
+    parametersMinima <<  1000, 0;         // Minima values for the free parameters
+    parametersMaxima << 2000, 1;     // Maxima values for the free parameters
 
     UniformPrior uniformPrior(parametersMinima, parametersMaxima);
     ptrPriors[0] = &uniformPrior;
