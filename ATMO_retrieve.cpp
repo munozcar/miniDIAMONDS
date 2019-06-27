@@ -33,7 +33,7 @@ ATMOModel::~ATMOModel()
 
 void ATMOModel::predict(RefArrayXd predictions, RefArrayXd const modelParameters)
 {
-    string model_name = "../ATMO/transfiles_txt/trans-iso-generic__10_+1.7__1100_1.00_model.txt";
+    string model_name = "../ATMO/transfiles_txt/trans-iso-generic___+__1100_1.00_model.txt";
 
     int temp_num = round(modelParameters(0)/100)*100; // Temperature
     float co_num = modelParameters(1); // C/O ratio
@@ -49,17 +49,62 @@ void ATMOModel::predict(RefArrayXd predictions, RefArrayXd const modelParameters
           else{
             co_num = 1.00;}
 
+    float logz_num = modelParameters(2); // Metallicity
+    if (logz_num < 0.5)
+    {
+      logz_num = 0.0;}
+      else if (logz_num < 1.35)
+      {
+        logz_num = 1.0;}
+        else if (logz_num < 1.85)
+        {
+          logz_num = 1.7;}
+          else if (logz_num < 2.15)
+          {
+            logz_num = 2.0;}
+            else{
+              logz_num = 2.3;
+            }
+
+    float grav_num = modelParameters(3); // C/O ratio
+        if (grav_num < 7.5)
+          {
+            grav_num = 5;}
+            else if (grav_num < 15)
+              {
+                grav_num = 10;}
+              else if (grav_num < 25)
+                {
+                  grav_num = 20;}
+                  else{
+                    grav_num = 50;}
+
     string CO_Ratio = std::to_string(co_num);
     string Temperature = std::to_string(temp_num);
+    string Metallicity = std::to_string(logz_num);
+
+    string Surf_gravity = std::to_string(grav_num);
+
+    if (grav_num < 10)
+    {
+      Surf_gravity.insert (0, "0");
+    }
 
     int insert_pos_t = 41;
-    int insert_pos_co = 54;
+    int insert_pos_co = 49;
+    int insert_pos_logz = 48;
+    int insert_pos_grav = 46;
+
     model_name.insert (insert_pos_t, Temperature);
     model_name.insert (insert_pos_co, CO_Ratio, 0, 4);
+    model_name.insert (insert_pos_logz, Metallicity, 0, 3);
+    model_name.insert (insert_pos_grav, Surf_gravity, 0, 2);
+
     if (temp_num < 1000)
     {
       model_name.insert (insert_pos_t, "0");
     }
+
 
     unsigned long Nrows;
     int Ncols;
@@ -106,12 +151,12 @@ int main(int argc, char *argv[])
     // Uniform Prior
     unsigned long Nparameters;  // Number of parameters for which prior distributions are defined
 
-    int Ndimensions = 2;        // Number of free parameters (dimensions) of the problem
+    int Ndimensions = 4;        // Number of free parameters (dimensions) of the problem
     vector<Prior*> ptrPriors(1);
     ArrayXd parametersMinima(Ndimensions);
     ArrayXd parametersMaxima(Ndimensions);
-    parametersMinima <<  1000, 0;         // Minima values for the free parameters
-    parametersMaxima << 2000, 1;     // Maxima values for the free parameters
+    parametersMinima <<  1000, 0 , 0, 0;         // Minima values for the free parameters
+    parametersMaxima << 2000, 1, 2.3, 50;     // Maxima values for the free parameters
 
     UniformPrior uniformPrior(parametersMinima, parametersMaxima);
     ptrPriors[0] = &uniformPrior;
