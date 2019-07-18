@@ -1,6 +1,9 @@
 #ifndef CLUSTERER_H
 #define CLUSTERER_H
 
+#define MAX_PARAMS 10
+#define MAX_PARAMVALS 100
+
 #include <random>
 #include <vector>
 #include <ctime>
@@ -544,4 +547,18 @@ class Results
         ArrayXd computeCredibleLimits(const double credibleLevel, const double skewness, const int NinterpolationsPerBin = 10);
         ArrayXXd parameterEstimation(const double credibleLevel, const bool writeMarginalDistribution);
 };
+
+
+int factorial(int num);
+
+int choose(int n, int k);
+
+void swap(int *elements, int i, int j);
+
+void reverse(int *elements, int i, int j);
+
+void find_permutations(int *elements, int last_index, int permutation_count, int permutation_indices[][last_index+1], int *pnum);
+
+void multipolator(double *grid, double *interpolation_parameters, double *model);
+
 #endif
