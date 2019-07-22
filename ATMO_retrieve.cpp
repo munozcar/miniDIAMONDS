@@ -65,16 +65,21 @@ void ATMOModel::predict(RefArrayXd predictions, RefArrayXd const modelParameters
   }
 
   double interpolation_params[6];
+  double scaling_params[2];
   double interpolated_model[5000];
 
-  interpolation_params[0] = modelParameters[0];
-  interpolation_params[1] = modelParameters[1];
-  interpolation_params[2] = modelParameters[2];
-  interpolation_params[3] = modelParameters[3];
-  interpolation_params[4] = modelParameters[4];
-  interpolation_params[5] = modelParameters[5];
+  interpolation_params[0] = modelParameters[0]; // Temperature
+  interpolation_params[1] = modelParameters[1]; // Surface gravity
+  interpolation_params[2] = modelParameters[2]; // Metallicity
+  interpolation_params[3] = modelParameters[3]; // Carbon Oxygen Ratio
+  interpolation_params[4] = modelParameters[4]; // Haze
+  interpolation_params[5] = modelParameters[5]; // Cloud Obscuration
 
-  multipolator(grid, interpolation_params, interpolated_model);
+  scaling_params[0] = modelParameters[6]; // Planet Radius
+  scaling_params[1] = modelParameters[7]; // Stellar Radius
+  scaling_params[2] = 2.3; // Mean molecular weight
+
+  multipolator(grid, interpolation_params, scaling_params, interpolated_model);
 
 
 
@@ -121,12 +126,13 @@ int main(int argc, char *argv[])
     // Uniform Prior
     unsigned long Nparameters;  // Number of parameters for which prior distributions are defined
 
-    int Ndimensions = 6;        // Number of free parameters (dimensions) of the problem
+    int Ndimensions = 8;        // Number of free parameters (dimensions) of the problem
     vector<Prior*> ptrPriors(1);
     ArrayXd parametersMinima(Ndimensions);
     ArrayXd parametersMaxima(Ndimensions);
-    parametersMinima <<  0,0,0,0,0,0;//0.5, 0.111, 0.333, 0.0;//, 0.044, 0.1;         // Minima values for the free parameters
-    parametersMaxima <<0.999999,0.999999,0.999999,0.999999,0.999999,0.999999;// 0.773, 0.555, 0.956, 0.769;//, 0.272, 0.3;     // Maxima values for the free parameters
+    parametersMinima <<  0,0,0,0,0,0,0.5,0.5;   // Minima values for the free parameters
+    parametersMaxima <<0.999999,0.999999,0.999999,0.999999,0.999999,0.999999,3,3; // Maxima values for the free parameters
+    // In order: T, g, log(z), co_ratio, haze, clouds (ALL NORMALZED FROM 0 TO 1), Rp, Rs (in jupiter and solar radii)
 
     UniformPrior uniformPrior(parametersMinima, parametersMaxima);
     ptrPriors[0] = &uniformPrior;
@@ -164,7 +170,7 @@ int main(int argc, char *argv[])
     int maxNdrawAttempts = 20000;                  // Maximum number of attempts when trying to draw a new sampling point
     int NinitialIterationsWithoutClustering = 100; // The first N iterations, we assume that there is only 1 cluster
     int NiterationsWithSameClustering = 50;        // Clustering is only happening every N iterations.
-    double initialEnlargementFraction =1.95;      // Fraction by which each axis in an ellipsoid has to be enlarged.
+    double initialEnlargementFraction =2.25;      // Fraction by which each axis in an ellipsoid has to be enlarged.
                                                             // It can be a number >= 0, where 0 means no enlargement.
     double shrinkingRate = 0.02;//0.02;                   // Exponent for remaining prior mass in ellipsoid enlargement fraction.
                                                             // It is a number between 0 and 1. The smaller the slower the shrinkage
